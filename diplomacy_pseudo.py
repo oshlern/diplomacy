@@ -47,46 +47,62 @@ location
 
 Map = [location1, location2]
 moves = {}
-convoys = {}
+convoyLocations = []
+
+def addPower(destination, source, negative=False):
+	if negative:
+		modifier = -1
+	else:
+		modifier = 1
+	if destination in moves:
+		if source in moves[destination]:
+			moves[destination][source][0] += modifier
+		else:
+			moves[destination][source] = (modifier, [])
+	else:
+		moves[destination] = {source: (modifier, [])}
+
+def addConvoy(destination, source, location):
+	if destination in moves:
+		if source in moves[destination]:
+			moves[destination][source][1].append(location)
+		else:
+			moves[destination][source] = (0, [location])
+	else:
+		moves[destination] = {source: (0, [location])}
+
+def canSupport(order):
+	assert order.orderType == supportType
+	if order.source.troop:
+		if order.source.order.orderType == moveType and order.source.order.destination == order.destination:
+			if order.location.isReachable(order.destination):
+				return True
+	return False
+
+def canConvoy(order):
+	assert order.orderType == convoyType
+	if order.source.troop == armyType:
+		if order.source.order.orderType == moveType and order.source.order.destination == order.destination:
+			if order.source.isCoast and order.destination.isCoast:
+				return True
+	return False
 
 for order in orders:
 	if order.orderType == supportType:
-		# if not order.source.troop:
-		# 	continue
-		# if not order.source.order.orderType == moveType and order.source.order.destination == order.destination:
-		# 	continue
-		if not order.location.isReachable(order.destination):
-			continue
-		if order.destination in moves:
-			if order.source in moves[order.destination]:
-				moves[order.destination][order.source][1] += 1
-			else:
-				moves[order.destination][order.source] = (False, 1)
-		else:
-			moves[order.destination] = {order.source: (False, 1)}
+		if canSupport(order):
+			addPower(order.destination, order.source)
 	elif order.orderType == moveType:
-		if order.destination in troops:
-			s_order = order.destination.order
-			if s_order.orderType == supportType and s_order.destination != order.location:
-				if not s_order.source.isReachable(s_order.destination):
-					continue
-				if s_order.destination in moves:
-					if s_order.source in moves[s_order.destination]:
-						moves[s_order.destination][s_order.source][1] -= 1
-					else:
-						moves[s_order.destination][s_order.source] = (False, -1)
-				else:
-					moves[s_order.destination] = {s_order.source: (False, -1)}
-		if order.destination in moves:
-			if order.source in moves[order.destination]:
-				moves[order.destination][order.source][0] = True
-				moves[order.destination][order.source][1] += 1
-			else:
-				moves[order.destination][order.source] = (True, 1)
-		else:
-			moves[order.destination] = {order.source: (True, 1)}
+		if order.destination != order.source:
+			if order.destination.troop:
+				s_order = order.destination.order
+				if s_order.orderType == supportType and s_order.destination != order.location:
+					if canSupport(s_order):
+						addPower(s_order.destination, s_order.source, negative=True)
+		addPower(order.destination, order.source)
 	elif order.orderType == convoyType:
-		if order.source.troop == armyType and order.destination.isLand
+		if canConvoy(order):
+			addConvoy(order.destination, order.source, order.location)
+			convoyLocations.append(order.location)
 
 loop over orders
 	if support, add 1 power to move in list of moves (supported destination must be reachable by supporting unit)
@@ -115,7 +131,7 @@ loop over other moves
 
 	
 
-moves = {destination: {source: (is_executed, power), source2: (is_executed, power2)}}
+moves = {destination: {source: (power, [convoy1, convoy2]), source2: (power2, [convoy3, convoy4])}}
 
 
 
